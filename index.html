@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de ex&aacute;menes mezclados</title>
+</head>
+
+<body>
+    <h1>Generador de ex&aacute;menes mezclados</h1>
+
+    <input type="file" id="fileInput"><br><br>
+    <button onclick="cargarArchivo()">Cargar archivo</button><br><br><br><br>
+
+    <label for="numExamenes">Cantidad de ex&aacute;menes:</label>
+    <input type="number" id="numExamenes" min="1" max="1000"><br><br>
+
+    <label for="preguntasPorExamen">Preguntas por examen:</label>
+    <input type="number" id="preguntasPorExamen" min="1" max="1000"><br><br>
+
+    <label for="cabecera">Cabecera:</label><br>
+    <textarea id="cabecera" rows="4" cols="50"></textarea><br><br>
+
+    <label for="piePagina">Pie de p&aacute;gina:</label><br>
+    <textarea id="piePagina" rows="4" cols="50"></textarea><br><br><br><br>
+
+    <button onclick="crearExamenes()">Crear ex&aacute;menes</button><br><br><br><br>
+
+    <p style="color: red;">
+        ------AYUDA------<br>
+    </p>
+    ****El prop&oacute;sito de esta web es, teniendo un listado de preguntas, crear muchos ex&aacute;menes con preguntas aleatorias y desordenadas****<br><br>
+    -Primero da click en "Seleccionar archivo" para elegir el archivo que contiene las preguntas (una pregunta por l&iacute;nea).<br><br>
+    -Da click en "Cargar archivo".<br><br>
+    -Configura la cantidad de ex&aacute;menes y preguntas por examen.<br><br>
+    -Pod&eacute;s tambi&eacute;n configurar la cabecera y el pie de p&aacute;gina que se agregar&aacute;n a cada examen.<br><br>
+    -Por &uacute;ltimo da click en "Crear ex&aacute;menes", se crear&aacute; (y descargar&aacute;) un .zip<br><br>
+
+    <p style="color: blue;">
+        Cortes&iacute;a de <a href="https://twitter.com/Guille_ok82" target="_blank">@Guille_ok82</a>
+    </p>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.6.0/jszip.min.js"></script>
+    <script>
+        let preguntasOriginales = [];
+        let archivoCargadoRuta = '';
+
+        function cargarArchivo() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+            if (!file) {
+                alert('No se ha seleccionado ning\u00FAn archivo.');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                const contenido = event.target.result;
+                const lineas = contenido.split('\n');
+                preguntasOriginales = lineas.filter(linea => linea.trim() !== '');
+                archivoCargadoRuta = fileInput.value.replace(/\\/g, '/');
+                archivoCargadoRuta = archivoCargadoRuta.substring(0, archivoCargadoRuta.lastIndexOf('/'));
+                const cantidadPreguntas = preguntasOriginales.length;
+                alert('Archivo cargado exitosamente (' + cantidadPreguntas + ' pregunta/s).');
+            };
+            reader.readAsText(file);
+        }
+
+        function crearExamenes() {
+            if (preguntasOriginales.length === 0) {
+                alert("No hay preguntas disponibles para crear ex\u00E1menes.");
+                return;
+            }
+
+            const cantidadPreguntas = preguntasOriginales.length;
+            const numExamenes = parseInt(document.getElementById('numExamenes').value);
+            const preguntasPorExamen = parseInt(document.getElementById('preguntasPorExamen').value);
+            const cabecera = document.getElementById('cabecera').value;
+            const piePagina = document.getElementById('piePagina').value;
+
+            if (!Number.isInteger(numExamenes) || !Number.isInteger(preguntasPorExamen) ||
+                numExamenes < 1 || numExamenes > 1000/*cantidadPreguntas*/ ||
+                preguntasPorExamen < 1 || preguntasPorExamen > cantidadPreguntas) {
+                alert('La cantidad de ex\u00E1menes debe ser entre 1 y 1000. La cantidad de preguntas por examen deben estar entre 1 y la cantidad total de preguntas.');
+                return;
+            }
+
+            const zip = new JSZip();
+            for (let i = 1; i <= numExamenes; i++) {
+                const examenNombre = `examen_${i}.txt`;
+                const examenContenido = generarExamen(cabecera, piePagina, preguntasPorExamen);
+                zip.file(examenNombre, examenContenido);
+            }
+
+            zip.generateAsync({ type: "blob" })
+                .then(function (content) {
+                    //Descarga el archivo .zip
+                    const url = URL.createObjectURL(content);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'examenes.zip';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                });
+
+            alert("Se descargar\u00E1/n " + numExamenes + " ex\u00E1men/es en un .zip. Presiona Aceptar y espera la descarga.");
+        }
+
+        function generarExamen(cabecera, piePagina, preguntasPorExamen) {
+            let examen = cabecera + '\n\n\n';
+            const preguntasDisponibles = [...preguntasOriginales];
+
+            for (let i = 0; i < preguntasPorExamen; i++) {
+                const indiceAleatorio = Math.floor(Math.random() * preguntasDisponibles.length);
+                const preguntaSeleccionada = preguntasDisponibles.splice(indiceAleatorio, 1)[0];
+                examen += preguntaSeleccionada + '\n\n';
+            }
+
+            examen += '\n' + piePagina;
+            return examen;
+        }
+    </script>
+</body>
+
+</html>
